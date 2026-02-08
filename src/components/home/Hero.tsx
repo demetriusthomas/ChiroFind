@@ -20,15 +20,20 @@ export function Hero() {
   };
 
   return (
-    <section className="relative bg-gradient-to-br from-cream to-white py-20 lg:py-32">
+    <section className="relative bg-secondary py-20 lg:py-32 overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl mx-auto text-center">
           {/* Headline */}
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold text-secondary mb-6">
-            Find Your Perfect{" "}
-            <span className="text-primary">Chiropractor</span>
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold mb-6">
+            <span className="text-white">Find Your</span>
+            <br />
+            <span className="text-primary italic">Perfect</span>
+            <br />
+            <span className="bg-gradient-to-r from-[#E8DCC8] via-[#D4B978] to-primary bg-clip-text text-transparent">
+              Chiropractor
+            </span>
           </h1>
-          <p className="text-lg md:text-xl text-muted-foreground mb-10">
+          <p className="text-lg md:text-xl text-gray-400 mb-10 max-w-2xl mx-auto">
             Discover top-rated chiropractors in your area. Read reviews, compare
             specialties, and book your appointment online.
           </p>
@@ -67,7 +72,7 @@ export function Hero() {
 
           {/* Quick Links */}
           <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <span className="text-sm text-muted-foreground">Popular:</span>
+            <span className="text-sm text-gray-500">Popular:</span>
             {["Back Pain", "Neck Pain", "Sciatica", "Sports Injury"].map(
               (term) => (
                 <button
@@ -84,9 +89,6 @@ export function Hero() {
           </div>
         </div>
       </div>
-
-      {/* Decorative elements */}
-      <div className="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-l from-primary/5 to-transparent pointer-events-none" />
     </section>
   );
 }
