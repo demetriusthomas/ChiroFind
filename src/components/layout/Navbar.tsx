@@ -1,12 +1,44 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Menu, X } from "lucide-react";
+import { Menu, X, User, LogOut } from "lucide-react";
+import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 export function Navbar() {
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const supabase = createClient();
+
+    // Get initial session
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUser(user);
+      setLoading(false);
+    });
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/");
+    router.refresh();
+  };
 
   return (
     <nav className="bg-white border-b border-border sticky top-0 z-50">
@@ -31,10 +63,10 @@ export function Navbar() {
               Find a Chiropractor
             </Link>
             <Link
-              href="/conditions"
+              href="/chiropractors"
               className="text-muted-foreground hover:text-secondary transition-colors"
             >
-              Conditions
+              Browse by Location
             </Link>
             <Link
               href="/about"
@@ -46,12 +78,31 @@ export function Navbar() {
 
           {/* Desktop Auth Buttons */}
           <div className="hidden md:flex items-center gap-4">
-            <Button variant="ghost" asChild>
-              <Link href="/login">Log In</Link>
-            </Button>
-            <Button asChild>
-              <Link href="/providers/join">List Your Practice</Link>
-            </Button>
+            {loading ? (
+              <div className="w-24 h-10 bg-muted animate-pulse rounded" />
+            ) : user ? (
+              <>
+                <Button variant="ghost" asChild>
+                  <Link href="/dashboard">
+                    <User className="w-4 h-4 mr-2" />
+                    Dashboard
+                  </Link>
+                </Button>
+                <Button variant="outline" onClick={handleLogout}>
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Log Out
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="ghost" asChild>
+                  <Link href="/login">Log In</Link>
+                </Button>
+                <Button asChild>
+                  <Link href="/signup">Get Started</Link>
+                </Button>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -80,11 +131,11 @@ export function Navbar() {
               Find a Chiropractor
             </Link>
             <Link
-              href="/conditions"
+              href="/chiropractors"
               className="block text-muted-foreground hover:text-secondary"
               onClick={() => setMobileMenuOpen(false)}
             >
-              Conditions
+              Browse by Location
             </Link>
             <Link
               href="/about"
@@ -94,16 +145,40 @@ export function Navbar() {
               About
             </Link>
             <hr className="border-border" />
-            <Link
-              href="/login"
-              className="block text-muted-foreground hover:text-secondary"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Log In
-            </Link>
-            <Button className="w-full" asChild>
-              <Link href="/providers/join">List Your Practice</Link>
-            </Button>
+            {user ? (
+              <>
+                <Link
+                  href="/dashboard"
+                  className="block text-muted-foreground hover:text-secondary"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Dashboard
+                </Link>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => {
+                    handleLogout();
+                    setMobileMenuOpen(false);
+                  }}
+                >
+                  Log Out
+                </Button>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="block text-muted-foreground hover:text-secondary"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Log In
+                </Link>
+                <Button className="w-full" asChild>
+                  <Link href="/signup">Get Started</Link>
+                </Button>
+              </>
+            )}
           </div>
         </div>
       )}
