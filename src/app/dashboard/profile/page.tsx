@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,8 +62,6 @@ export default function ProfilePage() {
     setSaved(false);
 
     // TODO: Save to database via Supabase
-    const supabase = createClient();
-
     // Simulate save
     await new Promise((resolve) => setTimeout(resolve, 1000));
 

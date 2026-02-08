@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Navbar } from "@/components/layout/Navbar";
@@ -12,7 +11,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, User, Stethoscope } from "lucide-react";
 
 export default function SignupPage() {
-  const router = useRouter();
   const [accountType, setAccountType] = useState<"patient" | "provider">("patient");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
