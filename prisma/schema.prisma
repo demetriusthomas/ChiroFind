@@ -1,0 +1,338 @@
+// ChiroFind Database Schema
+// Chiropractor finder and booking marketplace
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User accounts (patients and providers)
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String?
+  firstName     String
+  lastName      String
+  phone         String?
+  role          UserRole  @default(PATIENT)
+  emailVerified Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  provider      Provider?
+  appointments  Appointment[]
+  reviews       Review[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  PATIENT
+  PROVIDER
+  ADMIN
+}
+
+// Chiropractor/Provider profile
+model Provider {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Professional info
+  title             String   // DC, CCSP, etc.
+  bio               String?  @db.Text
+  yearsExperience   Int      @default(0)
+  licenseNumber     String?
+  licenseState      String?
+  npi               String?  // National Provider Identifier
+
+  // Profile
+  profileImage      String?
+  headerImage       String?
+  videoUrl          String?
+
+  // Status
+  isActive          Boolean  @default(true)
+  acceptingPatients Boolean  @default(true)
+  verifiedAt        DateTime?
+  featuredUntil     DateTime?
+
+  // Subscription
+  subscriptionTier  SubscriptionTier @default(FREE)
+  subscriptionEnds  DateTime?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  practice          Practice?
+  specialties       ProviderSpecialty[]
+  education         Education[]
+  certifications    Certification[]
+  insurances        ProviderInsurance[]
+  services          Service[]
+  availability      Availability[]
+  appointments      Appointment[]
+  reviews           Review[]
+
+  @@map("providers")
+}
+
+enum SubscriptionTier {
+  FREE
+  BASIC
+  PREMIUM
+  ENTERPRISE
+}
+
+// Practice/Clinic information
+model Practice {
+  id              String   @id @default(cuid())
+  providerId      String   @unique
+  provider        Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  name            String
+  description     String?  @db.Text
+  phone           String?
+  email           String?
+  website         String?
+
+  // Address
+  addressStreet   String
+  addressCity     String
+  addressState    String
+  addressZip      String
+  addressCountry  String   @default("USA")
+
+  // Coordinates for map
+  latitude        Float?
+  longitude       Float?
+
+  // SEO
+  slug            String   @unique
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  hours           PracticeHours[]
+
+  @@index([addressCity, addressState])
+  @@index([slug])
+  @@map("practices")
+}
+
+// Practice office hours
+model PracticeHours {
+  id          String   @id @default(cuid())
+  practiceId  String
+  practice    Practice @relation(fields: [practiceId], references: [id], onDelete: Cascade)
+
+  dayOfWeek   Int      // 0=Sunday, 1=Monday, etc.
+  openTime    String   // "09:00"
+  closeTime   String   // "17:00"
+  isClosed    Boolean  @default(false)
+
+  @@unique([practiceId, dayOfWeek])
+  @@map("practice_hours")
+}
+
+// Specialties/Conditions treated
+model Specialty {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?  @db.Text
+  icon        String?
+
+  // SEO
+  metaTitle       String?
+  metaDescription String?
+
+  providers   ProviderSpecialty[]
+
+  @@map("specialties")
+}
+
+model ProviderSpecialty {
+  id          String    @id @default(cuid())
+  providerId  String
+  provider    Provider  @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  specialtyId String
+  specialty   Specialty @relation(fields: [specialtyId], references: [id], onDelete: Cascade)
+  isPrimary   Boolean   @default(false)
+
+  @@unique([providerId, specialtyId])
+  @@map("provider_specialties")
+}
+
+// Education history
+model Education {
+  id          String   @id @default(cuid())
+  providerId  String
+  provider    Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  degree      String
+  school      String
+  year        Int?
+
+  @@map("education")
+}
+
+// Certifications
+model Certification {
+  id          String   @id @default(cuid())
+  providerId  String
+  provider    Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  name        String
+  issuingOrg  String?
+  year        Int?
+  expiresAt   DateTime?
+
+  @@map("certifications")
+}
+
+// Insurance providers
+model Insurance {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  slug      String   @unique
+  logo      String?
+
+  providers ProviderInsurance[]
+
+  @@map("insurances")
+}
+
+model ProviderInsurance {
+  id          String    @id @default(cuid())
+  providerId  String
+  provider    Provider  @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  insuranceId String
+  insurance   Insurance @relation(fields: [insuranceId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, insuranceId])
+  @@map("provider_insurances")
+}
+
+// Services offered
+model Service {
+  id          String   @id @default(cuid())
+  providerId  String
+  provider    Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String?
+  duration    Int      // minutes
+  price       Decimal? @db.Decimal(10, 2)
+  isActive    Boolean  @default(true)
+
+  appointments Appointment[]
+
+  @@map("services")
+}
+
+// Provider availability slots
+model Availability {
+  id          String   @id @default(cuid())
+  providerId  String
+  provider    Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  dayOfWeek   Int      // 0=Sunday, 1=Monday, etc.
+  startTime   String   // "09:00"
+  endTime     String   // "17:00"
+  slotDuration Int     @default(30) // minutes
+
+  @@unique([providerId, dayOfWeek, startTime])
+  @@map("availability")
+}
+
+// Appointments
+model Appointment {
+  id          String   @id @default(cuid())
+  providerId  String
+  provider    Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  patientId   String
+  patient     User     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  serviceId   String?
+  service     Service? @relation(fields: [serviceId], references: [id])
+
+  dateTime    DateTime
+  duration    Int      // minutes
+  status      AppointmentStatus @default(PENDING)
+
+  notes       String?  @db.Text
+  cancelReason String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([providerId, dateTime])
+  @@index([patientId])
+  @@map("appointments")
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+// Reviews
+model Review {
+  id          String   @id @default(cuid())
+  providerId  String
+  provider    Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  rating      Int      // 1-5
+  title       String?
+  content     String?  @db.Text
+
+  // Moderation
+  isApproved  Boolean  @default(false)
+  isHidden    Boolean  @default(false)
+
+  // Provider response
+  response    String?  @db.Text
+  respondedAt DateTime?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([providerId])
+  @@map("reviews")
+}
+
+// Location-based SEO pages (State/City directories)
+model Location {
+  id              String   @id @default(cuid())
+  city            String
+  state           String
+  stateCode       String   // CA, NY, etc.
+  slug            String   @unique // "san-francisco-ca"
+
+  // SEO
+  metaTitle       String?
+  metaDescription String?
+  content         String?  @db.Text
+
+  // Stats (cached)
+  providerCount   Int      @default(0)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([city, stateCode])
+  @@index([stateCode])
+  @@map("locations")
+}
