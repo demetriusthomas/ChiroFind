@@ -8,14 +8,14 @@ import { Badge } from "@/components/ui/badge";
 import {
   ArrowRight,
   Check,
-  Spine,
-  CircleDot,
-  Brain,
+  Activity,
+  Circle,
+  HeartPulse,
   Zap,
   Dumbbell,
-  PersonStanding,
+  User,
   Heart,
-  Baby,
+  Smile,
   type LucideIcon
 } from "lucide-react";
 
@@ -26,14 +26,14 @@ interface Symptom {
 }
 
 const symptoms: Symptom[] = [
-  { id: "back-pain", label: "Back Pain", icon: Spine },
-  { id: "neck-pain", label: "Neck Pain", icon: CircleDot },
-  { id: "headaches", label: "Headaches", icon: Brain },
+  { id: "back-pain", label: "Back Pain", icon: Activity },
+  { id: "neck-pain", label: "Neck Pain", icon: Circle },
+  { id: "headaches", label: "Headaches", icon: HeartPulse },
   { id: "sciatica", label: "Sciatica", icon: Zap },
   { id: "sports-injury", label: "Sports Injury", icon: Dumbbell },
-  { id: "posture", label: "Poor Posture", icon: PersonStanding },
+  { id: "posture", label: "Poor Posture", icon: User },
   { id: "pregnancy", label: "Pregnancy Care", icon: Heart },
-  { id: "pediatric", label: "Pediatric Care", icon: Baby },
+  { id: "pediatric", label: "Pediatric Care", icon: Smile },
 ];
 
 export function SymptomMatcher() {
