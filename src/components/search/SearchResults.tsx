@@ -52,6 +52,18 @@ export function SearchResults() {
         if (specialty && specialty !== "all") params.set("specialty", specialty);
         if (sortBy) params.set("sortBy", sortBy);
 
+        // Parse location into city and state (e.g., "Las Vegas, NV" -> city: "Las Vegas", state: "NV")
+        if (location) {
+          const parts = location.split(",").map(p => p.trim());
+          if (parts.length >= 2) {
+            params.set("city", parts[0]);
+            params.set("state", parts[1]);
+          } else if (parts.length === 1) {
+            // Could be just a city or state
+            params.set("city", parts[0]);
+          }
+        }
+
         const response = await fetch(`/api/providers?${params.toString()}`);
         const data = await response.json();
         setChiropractors(data);
@@ -62,7 +74,7 @@ export function SearchResults() {
       }
     }
     fetchProviders();
-  }, [specialty, sortBy]);
+  }, [specialty, sortBy, location]);
 
   const activeFilters = useMemo(() => {
     const filters: string[] = [];
