@@ -5,17 +5,35 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Check } from "lucide-react";
+import {
+  ArrowRight,
+  Check,
+  Spine,
+  CircleDot,
+  Brain,
+  Zap,
+  Dumbbell,
+  PersonStanding,
+  Heart,
+  Baby,
+  type LucideIcon
+} from "lucide-react";
 
-const symptoms = [
-  { id: "back-pain", label: "Back Pain", icon: "🔙" },
-  { id: "neck-pain", label: "Neck Pain", icon: "🦒" },
-  { id: "headaches", label: "Headaches", icon: "🤕" },
-  { id: "sciatica", label: "Sciatica", icon: "🦵" },
-  { id: "sports-injury", label: "Sports Injury", icon: "⚽" },
-  { id: "posture", label: "Poor Posture", icon: "🧘" },
-  { id: "pregnancy", label: "Pregnancy Care", icon: "🤰" },
-  { id: "pediatric", label: "Pediatric Care", icon: "👶" },
+interface Symptom {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+}
+
+const symptoms: Symptom[] = [
+  { id: "back-pain", label: "Back Pain", icon: Spine },
+  { id: "neck-pain", label: "Neck Pain", icon: CircleDot },
+  { id: "headaches", label: "Headaches", icon: Brain },
+  { id: "sciatica", label: "Sciatica", icon: Zap },
+  { id: "sports-injury", label: "Sports Injury", icon: Dumbbell },
+  { id: "posture", label: "Poor Posture", icon: PersonStanding },
+  { id: "pregnancy", label: "Pregnancy Care", icon: Heart },
+  { id: "pediatric", label: "Pediatric Care", icon: Baby },
 ];
 
 export function SymptomMatcher() {
@@ -59,13 +77,15 @@ export function SymptomMatcher() {
               }`}
               onClick={() => toggleSymptom(symptom.id)}
             >
-              <CardContent className="p-4 text-center relative">
+              <CardContent className="p-6 text-center relative">
                 {selected.includes(symptom.id) && (
                   <div className="absolute top-2 right-2">
                     <Check className="w-4 h-4 text-primary" />
                   </div>
                 )}
-                <div className="text-3xl mb-2">{symptom.icon}</div>
+                <div className="mb-3 flex justify-center">
+                  <symptom.icon className="w-8 h-8 text-primary" strokeWidth={1.5} />
+                </div>
                 <p className="font-medium text-secondary">{symptom.label}</p>
               </CardContent>
             </Card>
