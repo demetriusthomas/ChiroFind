@@ -128,8 +128,7 @@ export default function ForProvidersPage() {
                   </Button>
                   <Button
                     size="lg"
-                    variant="outline"
-                    className="border-white text-white hover:bg-white hover:text-secondary"
+                    className="bg-white text-secondary font-semibold hover:bg-white/90"
                     asChild
                   >
                     <Link href="/pricing">View Pricing</Link>
