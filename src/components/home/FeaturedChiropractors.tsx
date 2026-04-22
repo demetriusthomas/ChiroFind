@@ -2,49 +2,58 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Star, MapPin, Clock, ArrowRight } from "lucide-react";
+import { Star, MapPin, Clock, ArrowRight, Shield, Video } from "lucide-react";
+import prisma from "@/lib/prisma";
 
-// Mock data - will be replaced with real data from database
-const featuredProviders = [
-  {
-    id: "1",
-    name: "Dr. Sarah Johnson",
-    title: "DC, CCSP",
-    clinic: "Elite Spine & Wellness",
-    location: "San Francisco, CA",
-    rating: 4.9,
-    reviewCount: 127,
-    specialties: ["Sports Injury", "Back Pain"],
-    nextAvailable: "Today",
-    image: null,
-  },
-  {
-    id: "2",
-    name: "Dr. Michael Chen",
-    title: "DC, DACBSP",
-    clinic: "Bay Area Chiropractic",
-    location: "Oakland, CA",
-    rating: 4.8,
-    reviewCount: 98,
-    specialties: ["Pediatric", "Family Care"],
-    nextAvailable: "Tomorrow",
-    image: null,
-  },
-  {
-    id: "3",
-    name: "Dr. Emily Rodriguez",
-    title: "DC, RYT",
-    clinic: "Holistic Spine Center",
-    location: "San Jose, CA",
-    rating: 4.9,
-    reviewCount: 156,
-    specialties: ["Pregnancy", "Wellness"],
-    nextAvailable: "Today",
-    image: null,
-  },
-];
+async function getFeaturedProviders() {
+  const providers = await prisma.provider.findMany({
+    where: {
+      isActive: true,
+      subscriptionTier: "PREMIUM",
+    },
+    include: {
+      user: true,
+      practice: true,
+      specialties: {
+        include: {
+          specialty: true,
+        },
+      },
+      reviews: {
+        where: { isApproved: true },
+        select: { rating: true },
+      },
+    },
+    take: 3,
+  });
 
-export function FeaturedChiropractors() {
+  return providers.map((provider) => {
+    const avgRating =
+      provider.reviews.length > 0
+        ? provider.reviews.reduce((sum, r) => sum + r.rating, 0) / provider.reviews.length
+        : 0;
+
+    return {
+      id: provider.id,
+      name: `Dr. ${provider.user.firstName} ${provider.user.lastName}`,
+      title: provider.title,
+      clinic: provider.practice?.name || "Private Practice",
+      location: provider.practice
+        ? `${provider.practice.addressCity}, ${provider.practice.addressState}`
+        : "",
+      rating: Math.round(avgRating * 10) / 10,
+      reviewCount: provider.reviews.length,
+      specialties: provider.specialties.map((s) => s.specialty.name),
+      nextAvailable: "Today",
+      image: provider.profileImage,
+      verified: !!provider.verifiedAt,
+      virtualAvailable: !!provider.videoUrl,
+    };
+  });
+}
+
+export async function FeaturedChiropractors() {
+  const featuredProviders = await getFeaturedProviders();
   return (
     <section className="py-16 lg:py-24 bg-cream">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -67,19 +76,28 @@ export function FeaturedChiropractors() {
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {featuredProviders.map((provider) => (
-            <Card key={provider.id} className="hover:shadow-lg transition-shadow">
+            <Card key={provider.id} className="hover:shadow-lg transition-shadow group">
               <CardContent className="p-6">
                 <div className="flex gap-4 mb-4">
                   {/* Avatar placeholder */}
-                  <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <span className="text-primary font-bold text-lg">
-                      {provider.name.split(" ").map((n) => n[0]).join("")}
-                    </span>
+                  <div className="relative w-16 h-16 flex-shrink-0">
+                    <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                      <span className="text-primary font-bold text-lg">
+                        {provider.name.split(" ").map((n) => n[0]).join("")}
+                      </span>
+                    </div>
+                    {provider.verified && (
+                      <div className="absolute -bottom-1 -right-1 bg-blue-500 rounded-full p-1" title="Verified">
+                        <Shield className="w-3 h-3 text-white" />
+                      </div>
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-secondary truncate">
-                      {provider.name}
-                    </h3>
+                    <div className="flex items-center gap-1">
+                      <h3 className="font-semibold text-secondary truncate">
+                        {provider.name}
+                      </h3>
+                    </div>
                     <p className="text-sm text-muted-foreground">{provider.title}</p>
                     <p className="text-sm text-muted-foreground truncate">
                       {provider.clinic}
@@ -107,6 +125,12 @@ export function FeaturedChiropractors() {
                       {specialty}
                     </Badge>
                   ))}
+                  {provider.virtualAvailable && (
+                    <Badge variant="outline" className="border-purple-300 text-purple-600 text-xs">
+                      <Video className="w-3 h-3 mr-1" />
+                      Virtual
+                    </Badge>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-between">
@@ -114,7 +138,7 @@ export function FeaturedChiropractors() {
                     <Clock className="w-4 h-4" />
                     <span>Available {provider.nextAvailable}</span>
                   </div>
-                  <Button size="sm" asChild>
+                  <Button size="sm" asChild className="group-hover:bg-gradient-to-r group-hover:from-primary group-hover:to-[#a8863c]">
                     <Link href={`/chiropractor/${provider.id}`}>Book Now</Link>
                   </Button>
                 </div>

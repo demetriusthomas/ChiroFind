@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import prisma from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -20,20 +21,170 @@ export default async function DashboardPage() {
   const userMeta = user?.user_metadata;
   const isProvider = userMeta?.role === "PROVIDER";
 
-  // Mock stats - will be replaced with real data
-  const stats = {
-    totalPatients: 127,
-    appointmentsThisWeek: 24,
-    averageRating: 4.8,
-    profileViews: 342,
+  // Fetch provider data and stats from database
+  let stats = {
+    totalPatients: 0,
+    appointmentsThisWeek: 0,
+    averageRating: 0,
+    profileViews: 0,
   };
 
-  const setupSteps = [
+  let setupSteps = [
     { label: "Create account", completed: true },
     { label: "Complete profile", completed: false, href: "/dashboard/profile" },
     { label: "Add services", completed: false, href: "/dashboard/services" },
     { label: "Set availability", completed: false, href: "/dashboard/availability" },
   ];
+
+  // For patient appointments
+  let patientAppointments: {
+    id: string;
+    dateTime: Date;
+    status: string;
+    providerName: string;
+    practiceName: string;
+    serviceName: string | null;
+  }[] = [];
+
+  // For provider appointments
+  let providerAppointments: {
+    id: string;
+    dateTime: Date;
+    status: string;
+    patientName: string;
+    patientEmail: string;
+    serviceName: string | null;
+  }[] = [];
+
+  if (isProvider && user?.email) {
+    try {
+      const dbUser = await prisma.user.findUnique({
+        where: { email: user.email },
+        include: {
+          provider: {
+            include: {
+              practice: true,
+              services: true,
+              availability: true,
+              appointments: true,
+              reviews: { where: { isApproved: true } },
+            },
+          },
+        },
+      });
+
+      if (dbUser?.provider) {
+        const provider = dbUser.provider;
+
+        // Calculate stats
+        const uniquePatients = new Set(provider.appointments.map((a) => a.patientId));
+        const now = new Date();
+        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const appointmentsThisWeek = provider.appointments.filter(
+          (a) => new Date(a.dateTime) >= weekAgo && new Date(a.dateTime) <= now
+        ).length;
+
+        const avgRating =
+          provider.reviews.length > 0
+            ? provider.reviews.reduce((sum, r) => sum + r.rating, 0) / provider.reviews.length
+            : 0;
+
+        stats = {
+          totalPatients: uniquePatients.size,
+          appointmentsThisWeek,
+          averageRating: Math.round(avgRating * 10) / 10,
+          profileViews: 0, // Would need analytics tracking
+        };
+
+        // Fetch upcoming appointments for provider
+        const upcomingAppointments = await prisma.appointment.findMany({
+          where: {
+            providerId: provider.id,
+            dateTime: { gte: new Date() },
+            status: { in: ["PENDING", "CONFIRMED"] },
+          },
+          include: {
+            patient: true,
+            service: true,
+          },
+          orderBy: { dateTime: "asc" },
+          take: 5,
+        });
+
+        providerAppointments = upcomingAppointments.map((apt) => ({
+          id: apt.id,
+          dateTime: apt.dateTime,
+          status: apt.status,
+          patientName: `${apt.patient.firstName} ${apt.patient.lastName}`,
+          patientEmail: apt.patient.email,
+          serviceName: apt.service?.name || null,
+        }));
+
+        // Update setup steps based on actual data
+        setupSteps = [
+          { label: "Create account", completed: true },
+          {
+            label: "Complete profile",
+            completed: !!provider.bio && !!provider.practice,
+            href: "/dashboard/profile",
+          },
+          {
+            label: "Add services",
+            completed: provider.services.length > 0,
+            href: "/dashboard/services",
+          },
+          {
+            label: "Set availability",
+            completed: provider.availability.length > 0,
+            href: "/dashboard/availability",
+          },
+        ];
+      }
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+    }
+  }
+
+  // Fetch patient appointments
+  if (!isProvider && user?.email) {
+    try {
+      const dbUser = await prisma.user.findUnique({
+        where: { email: user.email },
+        include: {
+          appointments: {
+            where: {
+              dateTime: { gte: new Date() },
+              status: { in: ["PENDING", "CONFIRMED"] },
+            },
+            include: {
+              provider: {
+                include: {
+                  user: true,
+                  practice: true,
+                },
+              },
+              service: true,
+            },
+            orderBy: { dateTime: "asc" },
+            take: 5,
+          },
+        },
+      });
+
+      if (dbUser) {
+        patientAppointments = dbUser.appointments.map((apt) => ({
+          id: apt.id,
+          dateTime: apt.dateTime,
+          status: apt.status,
+          providerName: `Dr. ${apt.provider.user.firstName} ${apt.provider.user.lastName}`,
+          practiceName: apt.provider.practice?.name || "Private Practice",
+          serviceName: apt.service?.name || null,
+        }));
+      }
+    } catch (error) {
+      console.error("Error fetching patient appointments:", error);
+    }
+  }
 
   return (
     <div>
@@ -109,6 +260,49 @@ export default async function DashboardPage() {
             </Card>
           </div>
 
+          {/* Upcoming Appointments for Provider */}
+          {providerAppointments.length > 0 && (
+            <Card className="mb-8">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="w-5 h-5" />
+                  Upcoming Appointments
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {providerAppointments.map((apt) => (
+                    <div
+                      key={apt.id}
+                      className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                    >
+                      <div>
+                        <p className="font-medium">{apt.patientName}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {new Date(apt.dateTime).toLocaleDateString("en-US", {
+                            weekday: "short",
+                            month: "short",
+                            day: "numeric",
+                            hour: "numeric",
+                            minute: "2-digit",
+                          })}
+                          {apt.serviceName && ` • ${apt.serviceName}`}
+                        </p>
+                      </div>
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        apt.status === "CONFIRMED"
+                          ? "bg-green-100 text-green-700"
+                          : "bg-yellow-100 text-yellow-700"
+                      }`}>
+                        {apt.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Setup Checklist */}
           <Card className="mb-8">
             <CardHeader>
@@ -175,12 +369,56 @@ export default async function DashboardPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Upcoming Appointments</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="w-5 h-5" />
+                  Upcoming Appointments
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground">
-                  You have no upcoming appointments.
-                </p>
+                {patientAppointments.length === 0 ? (
+                  <p className="text-muted-foreground">
+                    You have no upcoming appointments.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {patientAppointments.map((apt) => (
+                      <div
+                        key={apt.id}
+                        className="p-3 bg-muted/50 rounded-lg"
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-medium text-sm">
+                            {apt.providerName}
+                          </span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${
+                            apt.status === "CONFIRMED"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-yellow-100 text-yellow-700"
+                          }`}>
+                            {apt.status}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {apt.practiceName}
+                        </p>
+                        <p className="text-sm mt-1">
+                          {new Date(apt.dateTime).toLocaleDateString("en-US", {
+                            weekday: "short",
+                            month: "short",
+                            day: "numeric",
+                            hour: "numeric",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                        {apt.serviceName && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {apt.serviceName}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

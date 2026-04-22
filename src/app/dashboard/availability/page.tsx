@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,30 +17,77 @@ type WeekSchedule = {
 };
 
 const daysOfWeek = [
-  { key: "monday", label: "Monday" },
-  { key: "tuesday", label: "Tuesday" },
-  { key: "wednesday", label: "Wednesday" },
-  { key: "thursday", label: "Thursday" },
-  { key: "friday", label: "Friday" },
-  { key: "saturday", label: "Saturday" },
-  { key: "sunday", label: "Sunday" },
+  { key: "sunday", label: "Sunday", index: 0 },
+  { key: "monday", label: "Monday", index: 1 },
+  { key: "tuesday", label: "Tuesday", index: 2 },
+  { key: "wednesday", label: "Wednesday", index: 3 },
+  { key: "thursday", label: "Thursday", index: 4 },
+  { key: "friday", label: "Friday", index: 5 },
+  { key: "saturday", label: "Saturday", index: 6 },
 ];
 
 const defaultSchedule: WeekSchedule = {
+  sunday: { enabled: false, startTime: "09:00", endTime: "17:00" },
   monday: { enabled: true, startTime: "09:00", endTime: "17:00" },
   tuesday: { enabled: true, startTime: "09:00", endTime: "17:00" },
   wednesday: { enabled: true, startTime: "09:00", endTime: "17:00" },
   thursday: { enabled: true, startTime: "09:00", endTime: "17:00" },
   friday: { enabled: true, startTime: "09:00", endTime: "16:00" },
   saturday: { enabled: true, startTime: "09:00", endTime: "13:00" },
-  sunday: { enabled: false, startTime: "09:00", endTime: "17:00" },
 };
 
 export default function AvailabilityPage() {
   const [schedule, setSchedule] = useState<WeekSchedule>(defaultSchedule);
   const [slotDuration, setSlotDuration] = useState("30");
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch existing availability
+  useEffect(() => {
+    async function fetchAvailability() {
+      try {
+        const response = await fetch("/api/dashboard/availability");
+        if (response.ok) {
+          const data = await response.json();
+
+          if (data.length > 0) {
+            // Convert API data to schedule format
+            const newSchedule = { ...defaultSchedule };
+
+            for (const slot of data) {
+              const day = daysOfWeek.find((d) => d.index === slot.dayOfWeek);
+              if (day) {
+                newSchedule[day.key] = {
+                  enabled: true,
+                  startTime: slot.startTime,
+                  endTime: slot.endTime,
+                };
+              }
+              if (slot.slotDuration) {
+                setSlotDuration(slot.slotDuration.toString());
+              }
+            }
+
+            // Mark days without data as disabled
+            for (const day of daysOfWeek) {
+              if (!data.find((s: { dayOfWeek: number }) => s.dayOfWeek === day.index)) {
+                newSchedule[day.key].enabled = false;
+              }
+            }
+
+            setSchedule(newSchedule);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching availability:", err);
+      } finally {
+        setInitialLoading(false);
+      }
+    }
+    fetchAvailability();
+  }, []);
 
   const toggleDay = (day: string) => {
     setSchedule({
@@ -59,14 +106,45 @@ export default function AvailabilityPage() {
   const handleSave = async () => {
     setLoading(true);
     setSaved(false);
+    setError(null);
 
-    // TODO: Save to database via Supabase
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    try {
+      // Convert schedule to API format
+      const availability = daysOfWeek
+        .filter((day) => schedule[day.key].enabled)
+        .map((day) => ({
+          dayOfWeek: day.index,
+          startTime: schedule[day.key].startTime,
+          endTime: schedule[day.key].endTime,
+          slotDuration: parseInt(slotDuration),
+        }));
 
-    setLoading(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+      const response = await fetch("/api/dashboard/availability", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ availability }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to save schedule");
+      }
+
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save");
+    } finally {
+      setLoading(false);
+    }
   };
+
+  if (initialLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -186,6 +264,11 @@ export default function AvailabilityPage() {
           {saved && (
             <span className="text-green-600 text-sm">
               Schedule saved successfully!
+            </span>
+          )}
+          {error && (
+            <span className="text-red-600 text-sm">
+              {error}
             </span>
           )}
         </div>

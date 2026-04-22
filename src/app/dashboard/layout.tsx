@@ -9,10 +9,12 @@ import {
   FileText,
   Settings,
   LayoutDashboard,
+  BarChart3,
 } from "lucide-react";
 
 const sidebarLinks = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
+  { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/dashboard/profile", label: "Profile", icon: User },
   { href: "/dashboard/services", label: "Services", icon: FileText },
   { href: "/dashboard/availability", label: "Availability", icon: Clock },

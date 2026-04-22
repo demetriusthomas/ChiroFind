@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,18 +11,18 @@ const availableSpecialties = [
   "Back Pain",
   "Neck Pain",
   "Sciatica",
-  "Sports Injury",
-  "Headaches",
-  "Pregnancy Care",
+  "Sports Injuries",
+  "Headaches & Migraines",
+  "Prenatal Care",
   "Pediatric",
-  "Wellness",
-  "Rehabilitation",
-  "Posture Correction",
+  "Auto Accident Injuries",
 ];
 
 export default function ProfilePage() {
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -42,6 +42,38 @@ export default function ProfilePage() {
 
   const [specialties, setSpecialties] = useState<string[]>([]);
 
+  // Fetch existing profile data
+  useEffect(() => {
+    async function fetchProfile() {
+      try {
+        const response = await fetch("/api/dashboard/profile");
+        if (response.ok) {
+          const data = await response.json();
+          setFormData({
+            title: data.title || "DC",
+            bio: data.bio || "",
+            yearsExperience: data.yearsExperience?.toString() || "",
+            licenseNumber: data.licenseNumber || "",
+            licenseState: data.licenseState || "",
+            practiceName: data.practiceName || "",
+            phone: data.phone || "",
+            website: data.website || "",
+            addressStreet: data.addressStreet || "",
+            addressCity: data.addressCity || "",
+            addressState: data.addressState || "",
+            addressZip: data.addressZip || "",
+          });
+          setSpecialties(data.specialties || []);
+        }
+      } catch (err) {
+        console.error("Error fetching profile:", err);
+      } finally {
+        setInitialLoading(false);
+      }
+    }
+    fetchProfile();
+  }, []);
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
@@ -60,15 +92,38 @@ export default function ProfilePage() {
     e.preventDefault();
     setLoading(true);
     setSaved(false);
+    setError(null);
 
-    // TODO: Save to database via Supabase
-    // Simulate save
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    try {
+      const response = await fetch("/api/dashboard/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...formData,
+          specialties,
+        }),
+      });
 
-    setLoading(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+      if (!response.ok) {
+        throw new Error("Failed to save profile");
+      }
+
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save");
+    } finally {
+      setLoading(false);
+    }
   };
+
+  if (initialLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -307,6 +362,11 @@ export default function ProfilePage() {
           {saved && (
             <span className="text-green-600 text-sm">
               Profile saved successfully!
+            </span>
+          )}
+          {error && (
+            <span className="text-red-600 text-sm">
+              {error}
             </span>
           )}
         </div>

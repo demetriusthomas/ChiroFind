@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Menu, X, User, LogOut } from "lucide-react";
+import { Menu, X, User, LogOut, ArrowRight } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 export function Navbar() {
@@ -40,6 +40,8 @@ export function Navbar() {
     router.refresh();
   };
 
+  const isProvider = user?.user_metadata?.role === "PROVIDER";
+
   return (
     <nav className="bg-white border-b border-border sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -52,27 +54,30 @@ export function Navbar() {
             <span className="font-serif text-xl font-semibold text-secondary">
               ChiroFind
             </span>
+            <span className="hidden sm:inline text-xs text-muted-foreground uppercase tracking-wider ml-1">
+              Marketplace
+            </span>
           </Link>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-8">
             <Link
               href="/search"
-              className="text-muted-foreground hover:text-secondary transition-colors"
+              className="text-muted-foreground hover:text-secondary transition-colors font-medium"
             >
-              Find a Chiropractor
+              Find Care
             </Link>
             <Link
-              href="/chiropractors"
-              className="text-muted-foreground hover:text-secondary transition-colors"
+              href="/for-providers"
+              className="text-muted-foreground hover:text-secondary transition-colors font-medium"
             >
-              Browse by Location
+              For Providers
             </Link>
             <Link
-              href="/about"
-              className="text-muted-foreground hover:text-secondary transition-colors"
+              href="/pricing"
+              className="text-muted-foreground hover:text-secondary transition-colors font-medium"
             >
-              About
+              Pricing
             </Link>
           </div>
 
@@ -88,18 +93,27 @@ export function Navbar() {
                     Dashboard
                   </Link>
                 </Button>
-                <Button variant="outline" onClick={handleLogout}>
+                <Button variant="ghost" onClick={handleLogout}>
                   <LogOut className="w-4 h-4 mr-2" />
                   Log Out
                 </Button>
               </>
             ) : (
               <>
-                <Button variant="ghost" asChild>
-                  <Link href="/login">Log In</Link>
-                </Button>
-                <Button asChild>
-                  <Link href="/signup">Get Started</Link>
+                <Link
+                  href="/login"
+                  className="text-muted-foreground hover:text-secondary transition-colors font-medium"
+                >
+                  Log In
+                </Link>
+                <Button
+                  asChild
+                  className="bg-primary hover:bg-primary/90 text-secondary font-semibold rounded-full px-6"
+                >
+                  <Link href="/signup?type=provider">
+                    List Your Practice
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Link>
                 </Button>
               </>
             )}
@@ -125,31 +139,31 @@ export function Navbar() {
           <div className="px-4 py-4 space-y-4">
             <Link
               href="/search"
-              className="block text-muted-foreground hover:text-secondary"
+              className="block text-muted-foreground hover:text-secondary font-medium"
               onClick={() => setMobileMenuOpen(false)}
             >
-              Find a Chiropractor
+              Find Care
             </Link>
             <Link
-              href="/chiropractors"
-              className="block text-muted-foreground hover:text-secondary"
+              href="/for-providers"
+              className="block text-muted-foreground hover:text-secondary font-medium"
               onClick={() => setMobileMenuOpen(false)}
             >
-              Browse by Location
+              For Providers
             </Link>
             <Link
-              href="/about"
-              className="block text-muted-foreground hover:text-secondary"
+              href="/pricing"
+              className="block text-muted-foreground hover:text-secondary font-medium"
               onClick={() => setMobileMenuOpen(false)}
             >
-              About
+              Pricing
             </Link>
             <hr className="border-border" />
             {user ? (
               <>
                 <Link
                   href="/dashboard"
-                  className="block text-muted-foreground hover:text-secondary"
+                  className="block text-muted-foreground hover:text-secondary font-medium"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Dashboard
@@ -169,13 +183,19 @@ export function Navbar() {
               <>
                 <Link
                   href="/login"
-                  className="block text-muted-foreground hover:text-secondary"
+                  className="block text-muted-foreground hover:text-secondary font-medium"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Log In
                 </Link>
-                <Button className="w-full" asChild>
-                  <Link href="/signup">Get Started</Link>
+                <Button
+                  className="w-full bg-primary hover:bg-primary/90 text-secondary font-semibold"
+                  asChild
+                >
+                  <Link href="/signup?type=provider">
+                    List Your Practice
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Link>
                 </Button>
               </>
             )}

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Star, MapPin, Clock, Phone, CheckCircle } from "lucide-react";
+import { Star, MapPin, Clock, Phone, CheckCircle, Shield, Zap, Award, MessageCircle } from "lucide-react";
 
 export interface ChiropractorData {
   id: string;
@@ -15,11 +15,16 @@ export interface ChiropractorData {
   rating: number;
   reviewCount: number;
   specialties: string[];
+  techniques?: string[];
   nextAvailable: string;
   acceptingNew: boolean;
   insuranceAccepted: string[];
   image: string | null;
   yearsExperience: number;
+  verified?: boolean;
+  featured?: boolean;
+  responseTime?: string;
+  consultationType?: ("in-person" | "virtual")[];
 }
 
 interface ChiropractorCardProps {
@@ -28,11 +33,21 @@ interface ChiropractorCardProps {
 
 export function ChiropractorCard({ chiropractor }: ChiropractorCardProps) {
   return (
-    <Card className="hover:shadow-lg transition-shadow">
-      <CardContent className="p-6">
+    <Card className={`hover:shadow-lg transition-shadow relative ${chiropractor.featured ? 'ring-2 ring-primary/50' : ''}`}>
+      {/* Featured Badge */}
+      {chiropractor.featured && (
+        <div className="absolute -top-3 left-6">
+          <Badge className="bg-gradient-to-r from-primary to-[#a8863c] text-white border-0 shadow-md">
+            <Award className="w-3 h-3 mr-1" />
+            Featured
+          </Badge>
+        </div>
+      )}
+
+      <CardContent className={`p-6 ${chiropractor.featured ? 'pt-8' : ''}`}>
         <div className="flex flex-col md:flex-row gap-6">
           {/* Avatar */}
-          <div className="flex-shrink-0">
+          <div className="flex-shrink-0 relative">
             <div className="w-24 h-24 rounded-xl bg-primary/10 flex items-center justify-center">
               <span className="text-primary font-bold text-2xl">
                 {chiropractor.name
@@ -41,20 +56,31 @@ export function ChiropractorCard({ chiropractor }: ChiropractorCardProps) {
                   .join("")}
               </span>
             </div>
+            {/* Verified Badge */}
+            {chiropractor.verified && (
+              <div className="absolute -bottom-1 -right-1 bg-blue-500 rounded-full p-1" title="Verified Provider">
+                <Shield className="w-4 h-4 text-white" />
+              </div>
+            )}
           </div>
 
           {/* Info */}
           <div className="flex-1 min-w-0">
             <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
               <div>
-                <Link
-                  href={`/chiropractor/${chiropractor.id}`}
-                  className="hover:underline"
-                >
-                  <h3 className="text-xl font-semibold text-secondary">
-                    {chiropractor.name}
-                  </h3>
-                </Link>
+                <div className="flex items-center gap-2">
+                  <Link
+                    href={`/chiropractor/${chiropractor.id}`}
+                    className="hover:underline"
+                  >
+                    <h3 className="text-xl font-semibold text-secondary">
+                      {chiropractor.name}
+                    </h3>
+                  </Link>
+                  {chiropractor.verified && (
+                    <span className="text-xs text-blue-600 font-medium">Verified</span>
+                  )}
+                </div>
                 <p className="text-muted-foreground">{chiropractor.title}</p>
                 <p className="text-sm text-muted-foreground mt-1">
                   {chiropractor.clinic}
@@ -85,6 +111,12 @@ export function ChiropractorCard({ chiropractor }: ChiropractorCardProps) {
                 <Clock className="w-4 h-4" />
                 <span>{chiropractor.yearsExperience} years experience</span>
               </div>
+              {chiropractor.responseTime && (
+                <div className="flex items-center gap-1 text-blue-600">
+                  <MessageCircle className="w-4 h-4" />
+                  <span>Responds {chiropractor.responseTime}</span>
+                </div>
+              )}
               {chiropractor.acceptingNew && (
                 <div className="flex items-center gap-1 text-green-600">
                   <CheckCircle className="w-4 h-4" />
@@ -93,8 +125,25 @@ export function ChiropractorCard({ chiropractor }: ChiropractorCardProps) {
               )}
             </div>
 
+            {/* Consultation Types */}
+            {chiropractor.consultationType && chiropractor.consultationType.length > 0 && (
+              <div className="mt-3 flex items-center gap-2">
+                {chiropractor.consultationType.includes("in-person") && (
+                  <Badge variant="outline" className="text-xs">
+                    In-Person
+                  </Badge>
+                )}
+                {chiropractor.consultationType.includes("virtual") && (
+                  <Badge variant="outline" className="text-xs border-purple-300 text-purple-600">
+                    <Zap className="w-3 h-3 mr-1" />
+                    Virtual Available
+                  </Badge>
+                )}
+              </div>
+            )}
+
             {/* Specialties */}
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="mt-3 flex flex-wrap gap-2">
               {chiropractor.specialties.map((specialty) => (
                 <Badge key={specialty} variant="secondary">
                   {specialty}
@@ -102,10 +151,22 @@ export function ChiropractorCard({ chiropractor }: ChiropractorCardProps) {
               ))}
             </div>
 
+            {/* Techniques */}
+            {chiropractor.techniques && chiropractor.techniques.length > 0 && (
+              <p className="mt-3 text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">Techniques:</span>{" "}
+                {chiropractor.techniques.slice(0, 3).join(", ")}
+                {chiropractor.techniques.length > 3 && (
+                  <span className="text-primary"> +{chiropractor.techniques.length - 3} more</span>
+                )}
+              </p>
+            )}
+
             {/* Insurance */}
             {chiropractor.insuranceAccepted.length > 0 && (
-              <p className="mt-3 text-sm text-muted-foreground">
-                Insurance: {chiropractor.insuranceAccepted.slice(0, 3).join(", ")}
+              <p className="mt-2 text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">Insurance:</span>{" "}
+                {chiropractor.insuranceAccepted.slice(0, 3).join(", ")}
                 {chiropractor.insuranceAccepted.length > 3 && (
                   <span> +{chiropractor.insuranceAccepted.length - 3} more</span>
                 )}
@@ -114,14 +175,14 @@ export function ChiropractorCard({ chiropractor }: ChiropractorCardProps) {
           </div>
 
           {/* Actions */}
-          <div className="flex flex-col gap-3 md:w-40">
+          <div className="flex flex-col gap-3 md:w-44">
             <div className="text-center md:text-right">
               <p className="text-sm text-muted-foreground">Next Available</p>
               <p className="font-semibold text-green-600">
                 {chiropractor.nextAvailable}
               </p>
             </div>
-            <Button asChild>
+            <Button asChild className={chiropractor.featured ? "bg-gradient-to-r from-primary to-[#a8863c]" : ""}>
               <Link href={`/chiropractor/${chiropractor.id}`}>View Profile</Link>
             </Button>
             <Button variant="outline" size="sm">

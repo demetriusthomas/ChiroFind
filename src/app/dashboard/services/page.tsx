@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Clock, DollarSign } from "lucide-react";
+import { Plus, Pencil, Trash2, Clock, DollarSign, Loader2 } from "lucide-react";
 
 interface Service {
   id: string;
@@ -19,35 +19,13 @@ interface Service {
   description: string;
   duration: number;
   price: number;
+  isActive: boolean;
 }
 
-// Mock data - will be replaced with database
-const initialServices: Service[] = [
-  {
-    id: "1",
-    name: "Initial Consultation",
-    description: "Comprehensive evaluation including health history, examination, and treatment plan.",
-    duration: 60,
-    price: 150,
-  },
-  {
-    id: "2",
-    name: "Chiropractic Adjustment",
-    description: "Standard spinal adjustment and manipulation therapy.",
-    duration: 30,
-    price: 75,
-  },
-  {
-    id: "3",
-    name: "Follow-up Visit",
-    description: "Progress evaluation and continued treatment.",
-    duration: 30,
-    price: 65,
-  },
-];
-
 export default function ServicesPage() {
-  const [services, setServices] = useState<Service[]>(initialServices);
+  const [services, setServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [formData, setFormData] = useState({
@@ -56,6 +34,24 @@ export default function ServicesPage() {
     duration: "30",
     price: "",
   });
+
+  // Fetch services on mount
+  useEffect(() => {
+    async function fetchServices() {
+      try {
+        const response = await fetch("/api/dashboard/services");
+        if (response.ok) {
+          const data = await response.json();
+          setServices(data);
+        }
+      } catch (err) {
+        console.error("Error fetching services:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchServices();
+  }, []);
 
   const openAddDialog = () => {
     setEditingService(null);
@@ -74,29 +70,68 @@ export default function ServicesPage() {
     setDialogOpen(true);
   };
 
-  const handleSave = () => {
-    const newService: Service = {
-      id: editingService?.id || Date.now().toString(),
-      name: formData.name,
-      description: formData.description,
-      duration: parseInt(formData.duration),
-      price: parseFloat(formData.price),
-    };
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      if (editingService) {
+        // Update existing service
+        const response = await fetch("/api/dashboard/services", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: editingService.id,
+            ...formData,
+          }),
+        });
 
-    if (editingService) {
-      setServices(services.map((s) => (s.id === editingService.id ? newService : s)));
-    } else {
-      setServices([...services, newService]);
+        if (response.ok) {
+          const updated = await response.json();
+          setServices(services.map((s) => (s.id === editingService.id ? updated : s)));
+        }
+      } else {
+        // Create new service
+        const response = await fetch("/api/dashboard/services", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formData),
+        });
+
+        if (response.ok) {
+          const newService = await response.json();
+          setServices([...services, newService]);
+        }
+      }
+      setDialogOpen(false);
+    } catch (err) {
+      console.error("Error saving service:", err);
+    } finally {
+      setSaving(false);
     }
-
-    setDialogOpen(false);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm("Are you sure you want to delete this service?")) {
-      setServices(services.filter((s) => s.id !== id));
+      try {
+        const response = await fetch(`/api/dashboard/services?id=${id}`, {
+          method: "DELETE",
+        });
+
+        if (response.ok) {
+          setServices(services.filter((s) => s.id !== id));
+        }
+      } catch (err) {
+        console.error("Error deleting service:", err);
+      }
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -243,8 +278,17 @@ export default function ServicesPage() {
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSave}>
-              {editingService ? "Save Changes" : "Add Service"}
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : editingService ? (
+                "Save Changes"
+              ) : (
+                "Add Service"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
