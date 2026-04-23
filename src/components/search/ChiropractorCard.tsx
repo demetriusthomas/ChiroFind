@@ -175,20 +175,27 @@ export function ChiropractorCard({ chiropractor }: ChiropractorCardProps) {
           </div>
 
           {/* Actions */}
-          <div className="flex flex-col gap-3 md:w-44">
-            <div className="text-center md:text-right">
+          <div className="flex flex-row md:flex-col gap-3 md:w-44 mt-4 md:mt-0 pt-4 md:pt-0 border-t md:border-t-0 border-border">
+            <div className="hidden md:block text-right">
               <p className="text-sm text-muted-foreground">Next Available</p>
               <p className="font-semibold text-green-600">
                 {chiropractor.nextAvailable}
               </p>
             </div>
-            <Button asChild className={chiropractor.featured ? "bg-gradient-to-r from-primary to-[#a8863c]" : ""}>
-              <Link href={`/chiropractor/${chiropractor.id}`}>View Profile</Link>
-            </Button>
-            <Button variant="outline" size="sm">
-              <Phone className="w-4 h-4 mr-2" />
-              Call
-            </Button>
+            {/* Mobile: Next Available inline */}
+            <div className="md:hidden flex items-center gap-2 text-sm">
+              <span className="text-muted-foreground">Next:</span>
+              <span className="font-semibold text-green-600">{chiropractor.nextAvailable}</span>
+            </div>
+            <div className="flex flex-row md:flex-col gap-2 flex-1 md:flex-none">
+              <Button asChild className={`flex-1 md:flex-none h-11 ${chiropractor.featured ? "bg-gradient-to-r from-primary to-[#a8863c]" : ""}`}>
+                <Link href={`/chiropractor/${chiropractor.id}`}>View Profile</Link>
+              </Button>
+              <Button variant="outline" className="h-11 px-4 md:w-full">
+                <Phone className="w-4 h-4 md:mr-2" />
+                <span className="hidden md:inline">Call</span>
+              </Button>
+            </div>
           </div>
         </div>
       </CardContent>

@@ -131,8 +131,34 @@
   }
   body {
     @apply bg-background text-foreground;
+    /* Safe area for notched phones */
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
   }
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-playfair), serif;
   }
+  /* Touch-friendly targets on mobile */
+  @media (max-width: 768px) {
+    button, a, [role="button"] {
+      min-height: 44px;
+    }
+    input, select, textarea {
+      font-size: 16px; /* Prevents iOS zoom on focus */
+    }
+  }
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Hide scrollbar but allow scroll */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
 }

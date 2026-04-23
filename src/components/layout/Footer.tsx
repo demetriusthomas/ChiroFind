@@ -107,6 +107,8 @@ export function Footer() {
           <p>&copy; {new Date().getFullYear()} ChiroFind. All rights reserved.</p>
         </div>
       </div>
+      {/* Safe area padding for bottom-notched phones */}
+      <div className="h-[env(safe-area-inset-bottom)]" />
     </footer>
   );
 }
